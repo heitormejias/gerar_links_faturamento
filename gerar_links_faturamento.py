@@ -1,39 +1,9 @@
 import fitz  # PyMuPDF
 import os
 import tkinter as tk
-from tkinter import filedialog, messagebox
+from tkinter import filedialog, messagebox, StringVar
 from PyPDF2 import PdfReader, PdfWriter
-
-temas = [
-    "EXTRATO DA DECLARAÇÃO DE IMPORTAÇÃO",
-    "BILL OF LADING",
-    "AIR WAYBILL",
-    "Fatura Comercial",
-    "Invoice",
-    "FACTURA",
-    "PACKING LIST",
-    "PACKING SLIP",
-    "ALBARN",
-    "GUIA ARRECADAÇÃO ESTADUAL",
-    "GUIA PARA LIBERAÇÃO DE MERCADORIA ESTRANGEIRA",
-    "DOCUMENTO DE ARRECADAÇÃO ESTADUAL",
-    "DEPARTAMENTO DA MARINHA MERCANTE",
-    "DAI - DOCUMENTO DE ARRECADAÇÃO DE IMPORTAÇÃO",
-    "DACTE",
-    "GUIA DE RECOLHIMENTO DE HONORARIOS - GRH",
-    "DANFE",
-    "COMPROVANTE IMPORTAÇÃO",
-    "Extrato de Licença de Importação",
-    "LAVAGEM",
-    "DEMURRAGE",
-    "RETIFICAÇÃO",
-
-    "ICMS"
-]
-
-ignored_files = ['temp_file.pdf']
-
-name_of_new_file = 'AAAAA.pdf'
+from dotenv import load_dotenv
 
 def criar_links(pdf_path):
     try:
@@ -42,9 +12,14 @@ def criar_links(pdf_path):
 
         pagina_indice = doc[0]
         encontrados = []
+        temas = os.getenv("PALAVRAS_CHAVES").split(",")
 
+        global logs_str
+        logs_str.set("")
         for tema in temas:
             print(f"🔍 Buscando: {tema}")
+            logs_str.set(logs_str.get() + f"\n🔍 Buscando: {tema}")
+            # pula uma pagina, comeca na 1.
             for i in range(1, len(doc)):
                 texto = doc[i].get_text()
                 if tema.lower() in texto.lower():
@@ -56,14 +31,16 @@ def criar_links(pdf_path):
                             "kind": fitz.LINK_GOTO,
                             "page": i
                         })
-                    print(f"✅ Tema '{tema}' encontrado na página {i+1}")
+                        print(f"✅ Tema '{tema}' encontrado na página {i + 1}")
+                        logs_str.set(logs_str.get()+ f"\n✅ Tema '{tema}' encontrado na página {i + 1}")
                     break
 
         if encontrados:
-            novo_arquivo = os.path.join(os.path.dirname(pdf_path), name_of_new_file)
+            novo_arquivo = os.path.join(os.path.dirname(pdf_path), os.getenv("NOME_ARQUIVO_SAIDA", "ARQUIVO_SAIDA.pdf"))
             doc.save(novo_arquivo)
             doc.close()
             print(f"\n✅ Arquivo salvo com links: {novo_arquivo}")
+            logs_str.set(logs_str.get() + f"\n\nArquivo salvo com sucesso:\n{novo_arquivo}")
             messagebox.showinfo("Sucesso", f"Arquivo salvo com sucesso:\n{novo_arquivo}")
         else:
             print("\n❌ Nenhum tema encontrado.")
@@ -75,22 +52,21 @@ def criar_links(pdf_path):
 
 
 # Function to find pdf files
-def merge_files(file_path):
+def merge_files(file_path, folder_path):
     lfiles = []
-    files_path = os.path.join(os.path.dirname(file_path),"anexos")
     rootPath = os.path.dirname(file_path)
-
-    for file in os.listdir(files_path):
+    ignored_files = os.getenv("ARQUIVO_TEMP").split(",")
+    for file in os.listdir(folder_path):
         if str(file).lower().endswith(".pdf") and file not in ignored_files:
-            lfiles.append(os.path.join(files_path, file))
+            lfiles.append(os.path.join(folder_path, file))
 
     writer = PdfWriter()
     reader = PdfReader(file_path)
     for page in reader.pages:
         writer.add_page(page)
 
-    for file_path in lfiles:
-        reader = PdfReader(file_path)
+    for file_pdf in lfiles:
+        reader = PdfReader(file_pdf)
         for page in reader.pages:
             writer.add_page(page)
 
@@ -107,10 +83,14 @@ def delete_temp_file(merged_pdf_path):
 def escolher_pdf():
     file_path = filedialog.askopenfilename(title="Selecione o arquivo FATURAMENTO.pdf", filetypes=[("PDF", "*.pdf")])
     if file_path:
-        new_temp_file = merge_files(file_path)
-        print(f"\n✅ Novo arquivo temp: {new_temp_file}")
-        criar_links(new_temp_file)
-        delete_temp_file(new_temp_file)
+        files_pdfs_path = filedialog.askdirectory(title="Selecione o pasta com os anexos (.pdf)", initialdir=".")
+        if files_pdfs_path:
+            new_temp_file = merge_files(file_path, files_pdfs_path)
+            print(f"\n✅ Novo arquivo temp: {new_temp_file}")
+            criar_links(new_temp_file)
+            delete_temp_file(new_temp_file)
+
+load_dotenv()  # take environment variables
 
 janela = tk.Tk()
 janela.title("GERAR LINKS NOVO FATURAMENTO")
@@ -118,6 +98,11 @@ janela.geometry("400x400")
 janela.configure(bg="#00BCD4")
 
 botao = tk.Button(janela, text="Buscar PDF e Gerar Links", command=escolher_pdf, width=30, height=2)
-botao.pack(pady=150)
+botao.pack(pady=6)
+
+logs_str = StringVar(value="Aqui sera apresentado os logs")
+label = tk.Label(janela,textvariable=logs_str)
+label.pack(pady=6)
+
 
 janela.mainloop()
