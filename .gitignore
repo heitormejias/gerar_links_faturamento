@@ -1,7 +1,5 @@
 *.pdf
 *.PDF
-*.spec
-
 
 .idea/
 dist/
