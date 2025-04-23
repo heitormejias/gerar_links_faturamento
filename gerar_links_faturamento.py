@@ -134,7 +134,7 @@ if __name__ == "__main__":
     # Demonstrative file
     demonstrative_label = ttk.Label(window, text="Arquivo demonstrativo:", style="Custom.TLabel")
     demonstrative_label.configure(background=default_bgcolor)
-    demonstrative_label.grid(row=0, column=0, padx=10, pady=10, sticky="w")
+    demonstrative_label.grid(row=0, column=0, padx=10, pady=20,sticky="w")
 
     demonstrative_entry = ttk.Entry(window, width=70)
     demonstrative_entry.grid(row=0, column=1, padx=10, pady=10)
