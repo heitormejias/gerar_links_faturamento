@@ -1,9 +1,14 @@
 import fitz
 import os
 import tkinter as tk
-from tkinter import ttk, filedialog, messagebox, StringVar, scrolledtext
 from PyPDF2 import PdfReader, PdfWriter
-from datetime import datetime
+from tkinter import ttk, filedialog, messagebox, StringVar, scrolledtext
+
+
+default_bgcolor = "#00BCD4"
+default_font = "Helvetica"
+default_font_size = 11
+
 
 def criar_links(pdf_path):
     try:
@@ -81,15 +86,15 @@ def delete_temp_file(merged_pdf_path):
     #    os.remove(merged_pdf_path)
     return None
 
-def escolher_pdf():
-    file_path = filedialog.askopenfilename(title="Selecione o arquivo FATURAMENTO.pdf", filetypes=[("PDF", "*.pdf")])
-    if file_path:
-        files_pdfs_path = filedialog.askdirectory(title="Selecione o pasta com os anexos (.pdf)", initialdir=".")
-        # if files_pdfs_path:
-        #     new_temp_file = merge_files(file_path, files_pdfs_path)
-        #     print(f"\n✅ Novo arquivo temp: {new_temp_file}")
-        #     criar_links(new_temp_file)
-        #     delete_temp_file(new_temp_file)
+# def escolher_pdf():
+#     file_path = filedialog.askopenfilename(title="Selecione o arquivo FATURAMENTO.pdf", filetypes=[("PDF", "*.pdf")])
+#     if file_path:
+#         files_pdfs_path = filedialog.askdirectory(title="Selecione o pasta com os anexos (.pdf)", initialdir=".")
+#         if files_pdfs_path:
+#             new_temp_file = merge_files(file_path, files_pdfs_path)
+#             print(f"\n✅ Novo arquivo temp: {new_temp_file}")
+#             criar_links(new_temp_file)
+#             delete_temp_file(new_temp_file)
 
 def cmd_demonstrative_file():
     file_path = filedialog.askopenfilename(
@@ -118,10 +123,6 @@ def add_log(message):
 
             
 if __name__ == "__main__":
-    default_bgcolor = "#00BCD4"
-    default_font = "Helvetica"
-    default_font_size = 11
-
     window = tk.Tk()
     window.title("DEMONSTRATIVO DE DESPESAS - CONSOLIDAÇÃO")
     window.geometry("850x400")
@@ -154,7 +155,7 @@ if __name__ == "__main__":
     consolidate_button.grid(row=1, column=2, padx=10, pady=10)
 
     # Button to start consolidation
-    button = tk.Button(window, text="INICIAR CONSOLIDAÇÃO", command=escolher_pdf, width=30, height=2)
+    button = tk.Button(window, text="INICIAR CONSOLIDAÇÃO", width=30, height=2)
     button.grid(row=2, columnspan=3, pady=50)
 
     # Logs 
