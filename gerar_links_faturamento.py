@@ -1,100 +1,98 @@
 import fitz
 import os
+import re
 import tkinter as tk
-from PyPDF2 import PdfReader, PdfWriter
 from tkinter import ttk, filedialog, messagebox, StringVar, scrolledtext
+from PyPDF2 import PdfReader, PdfWriter
 
 
 default_bgcolor = "#00BCD4"
 default_font = "Helvetica"
 default_font_size = 11
+temp_file = "merged_temp_file.pdf"
+ignored_files = [temp_file]
 
 
-def criar_links(pdf_path):
-    try:
-        print(f"\nAbrindo: {pdf_path}")
-        doc = fitz.open(pdf_path)
-
-        pagina_indice = doc[0]
-        encontrados = []
-
-        global logs_str,themes,filename_out
-        logs_str.set("")
-        for tema in themes.get():
-            print(f"🔍 Buscando: {tema}")
-            logs_str.set(logs_str.get() + f"\n🔍 Buscando: {tema}")
-            # pula uma pagina, comeca na 1.
-            for i in range(1, len(doc)):
-                texto = doc[i].get_text()
-                if tema.lower() in texto.lower():
-                    encontrados.append((tema, i))
-                    posicoes = pagina_indice.search_for(tema)
-                    if posicoes:
-                        pagina_indice.insert_link({
-                            "from": posicoes[0],
-                            "kind": fitz.LINK_GOTO,
-                            "page": i
-                        })
-                        print(f"✅ Tema '{tema}' encontrado na página {i + 1}")
-                        logs_str.set(logs_str.get()+ f"\n✅ Tema '{tema}' encontrado na página {i + 1}")
-                    break
-
-        if encontrados:
-            novo_arquivo = os.path.join(os.path.dirname(pdf_path), filename_out.get())
-            doc.save(novo_arquivo)
-            doc.close()
-            print(f"\n✅ Arquivo salvo com links: {novo_arquivo}")
-            logs_str.set(logs_str.get() + f"\n\nArquivo salvo com sucesso:\n{novo_arquivo}")
-            messagebox.showinfo("Sucesso", f"Arquivo salvo com sucesso:\n{novo_arquivo}")
-        else:
-            print("\n❌ Nenhum tema encontrado.")
-            messagebox.showinfo("Aviso", "Nenhum tema encontrado no documento.")
-
-    except Exception as e:
-        print(f"❌ ERRO: {e}")
-        messagebox.showerror("Erro", str(e))
-
-
-# Function to find pdf files
-def merge_files(file_path, folder_path):
+# Function to find pdf files in rootPath
+def find_pdf_file(root_path, file_name):
     lfiles = []
-    rootPath = os.path.dirname(file_path)
-    global file_temp
-    ignored_files = file_temp.split(",")
-    for file in os.listdir(folder_path):
+
+    for file in os.listdir(root_path):
         if str(file).lower().endswith(".pdf") and file not in ignored_files:
-            lfiles.append(os.path.join(folder_path, file))
+            lfiles.append(os.path.join(root_path, file))
+    return lfiles
 
-    writer = PdfWriter()
+# Function to extract text from a PDF
+def extract_text_from_pdf(file_path):
     reader = PdfReader(file_path)
+    text = []
     for page in reader.pages:
-        writer.add_page(page)
+        text.append(page.extract_text())
+    return text
 
-    for file_pdf in lfiles:
-        reader = PdfReader(file_pdf)
+# Function to identify marking inside parentheses
+def find_marking_in_text(text):
+    pattern = r'\((\bLink_\d{3}\b)\)'
+    return re.findall(pattern, text)
+
+# Function to merge PDF files
+def merge_pdfs(rootPath, file_paths):
+    writer = PdfWriter()
+    for file_path in file_paths:
+        reader = PdfReader(file_path)
         for page in reader.pages:
             writer.add_page(page)
-
-    output_path = os.path.join(rootPath, file_temp)
-    delete_temp_file(output_path) # delete if exists
+    output_path = os.path.join(rootPath, temp_file)
     with open(output_path, "wb") as f_out:
         writer.write(f_out)
     return output_path
 
-def delete_temp_file(merged_pdf_path):
-    #if os.path.exists(merged_pdf_path):
-    #    os.remove(merged_pdf_path)
-    return None
+def create_pdf_with_links(rootPath, merged_pdf_path):
+    # Reabrir o documento para processar apenas os textos entre parênteses no quadro de despesas
+    doc = fitz.open(merged_pdf_path)
 
-# def escolher_pdf():
-#     file_path = filedialog.askopenfilename(title="Selecione o arquivo FATURAMENTO.pdf", filetypes=[("PDF", "*.pdf")])
-#     if file_path:
-#         files_pdfs_path = filedialog.askdirectory(title="Selecione o pasta com os anexos (.pdf)", initialdir=".")
-#         if files_pdfs_path:
-#             new_temp_file = merge_files(file_path, files_pdfs_path)
-#             print(f"\n✅ Novo arquivo temp: {new_temp_file}")
-#             criar_links(new_temp_file)
-#             delete_temp_file(new_temp_file)
+    # Extrair texto e coordenadas da primeira página (arquivo-1)
+    page = doc[0]
+    full_text = page.get_text()
+    words = page.get_text("words")
+    words.sort(key=lambda w: (w[1], w[0]))  # Ordenar por posição
+
+    # Extrair todos os textos entre parênteses no quadro de despesas
+    # Vamos considerar uma região específica da página como "quadro de despesas"
+    # Supondo que o quadro de despesas esteja verticalmente entre y=180 e y=700
+    despesa_words = [w for w in words if 180 <= w[1] <= 700 and re.fullmatch(r"\(\d+\)", w[4])]
+    despesa_numeros = [re.search(r"\d+", w[4]).group() for w in despesa_words]
+
+    # Mapear as páginas onde cada número é encontrado após a primeira
+    num_to_page = {}
+    for num in despesa_numeros:
+        for i, p in enumerate(doc.pages(1, len(doc))):  # ignorar primeira
+            if num in p.get_text():
+                num_to_page[num] = i + 1
+                break
+
+    # Adicionar links diretamente sobre os parênteses do quadro de despesas
+    linked = set()
+    for w in despesa_words:
+        x0, y0, x1, y1, text, *_ = w
+        num = re.search(r"\d+", text).group()
+        if num in num_to_page and num not in linked:
+            page.insert_link({
+                "from": fitz.Rect(x0, y0, x1, y1),
+                "kind": fitz.LINK_GOTO,
+                "page": num_to_page[num]
+            })
+            linked.add(num)
+
+    # Salvar o PDF final com os links nos parênteses do quadro de despesas
+    output_despesas_linkado = os.path.join(rootPath, "demostrativo-consolidado.pdf")
+    doc.save(output_despesas_linkado)
+    doc.close()
+
+def delete_temp_file(merged_pdf_path):
+    if os.path.exists(merged_pdf_path):
+        os.remove(merged_pdf_path)
+
 
 def cmd_demonstrative_file():
     file_path = filedialog.askopenfilename(
@@ -104,16 +102,17 @@ def cmd_demonstrative_file():
     if file_path:
         demonstrative_entry.delete(0, tk.END)
         demonstrative_entry.insert(0, file_path)
-        add_log(f"✅ Arquivo selecionado: {file_path}")
+        ignored_files.append(file_path.split('/')[-1])
+        add_log(f"✅ Demonstrativo selecionado: {file_path}")
 
-def cmd_consolidate_folder():
+def cmd_attachments_folder():
     folder_path = filedialog.askdirectory(
-        title="Selecione a pasta com os arquivos para consolidação (.pdf)")
+        title="Selecione a pasta dos anexos (.pdf)")
     
     if folder_path:
-        consolidate_entry.delete(0, tk.END)
-        consolidate_entry.insert(0, folder_path)
-        add_log(f"✅ Pasta selecionada: {folder_path}")
+        attachments_entry.delete(0, tk.END)
+        attachments_entry.insert(0, folder_path)
+        add_log(f"✅ Pasta de anexos selecionada: {folder_path}")
 
 def add_log(message):
     log_text.config(state="normal")
@@ -121,6 +120,12 @@ def add_log(message):
     log_text.see(tk.END)
     log_text.config(state="disabled")
 
+def start_consolidation():
+    if demonstrative_entry.get() == "None":
+        add_log("❌ Arquivo de demonstrativo não encontrado!")
+        return None
+
+    
             
 if __name__ == "__main__":
     window = tk.Tk()
@@ -144,18 +149,18 @@ if __name__ == "__main__":
     demonstrative_button.grid(row=0, column=2, padx=10, pady=10)
 
     # Others files to consolidate
-    consolidate_label = ttk.Label(window, text="Pasta com arquivos para consolidação:", style="Custom.TLabel")
-    consolidate_label.configure(background=default_bgcolor)
-    consolidate_label.grid(row=1, column=0, padx=10, pady=10, sticky="w")
+    attachments_label = ttk.Label(window, text="Pasta de anexos:", style="Custom.TLabel")
+    attachments_label.configure(background=default_bgcolor)
+    attachments_label.grid(row=1, column=0, padx=10, pady=10, sticky="w")
 
-    consolidate_entry = ttk.Entry(window, width=70)
-    consolidate_entry.grid(row=1, column=1, padx=10, pady=10)
+    attachments_entry = ttk.Entry(window, width=70)
+    attachments_entry.grid(row=1, column=1, padx=10, pady=10)
 
-    consolidate_button = ttk.Button(window, text='Procurar...', command=cmd_consolidate_folder)
-    consolidate_button.grid(row=1, column=2, padx=10, pady=10)
+    consolidation_button = ttk.Button(window, text='Procurar...', command=cmd_attachments_folder)
+    consolidation_button.grid(row=1, column=2, padx=10, pady=10)
 
     # Button to start consolidation
-    button = tk.Button(window, text="INICIAR CONSOLIDAÇÃO", width=30, height=2)
+    button = tk.Button(window, text="INICIAR CONSOLIDAÇÃO", command=start_consolidation, width=30, height=2)
     button.grid(row=2, columnspan=3, pady=50)
 
     # Logs 
@@ -167,39 +172,3 @@ if __name__ == "__main__":
     log_text.grid(row=4, columnspan=4, padx=10, pady=2, sticky="w")
 
     window.mainloop()
-
-
-
-
-
-    # entrada = ttk.Entry(window)
-    # entrada.pack(pady=5)
-
-    # botao = ttk.Button(window, text="Clique aqui")
-    # botao.pack(pady=10)
-
-
-
-    # file_temp: str='temp_file.pdf'
-
-    # logs_str = StringVar(value="Aqui sera apresentado os logs")
-
-    # # Create and place the filename_out label and entry
-    # filename_out = StringVar(value=f"DEMONSTRATIVO-DE-DESPESAS-CONSOLIDADO.pdf")
-    # filename_out_label = tk.Label(window, text="Arquivo de saida:")
-    # filename_out_label.configure(bg="#F6F6F6")
-    # filename_out_label.pack()
-    # filename_out_entry = tk.Entry(window, textvariable=filename_out, width=40)
-    # filename_out_entry.pack(pady=6)
-
-    # # Create and place the Button
-    # botao = tk.Button(window, text="Buscar PDF e Gerar Links", command=escolher_pdf, width=30, height=2)
-    # botao.pack(pady=6)
-
-    # # Create and place the Logs
-    # label = tk.Label(window,textvariable=logs_str, width=40, height=5)
-    # label.configure(bg="#ffffff")
-    # label.pack(pady=12)
-
-    # # main loop
-    # window.mainloop()
