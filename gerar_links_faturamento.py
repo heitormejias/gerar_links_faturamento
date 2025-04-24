@@ -156,8 +156,8 @@ if __name__ == "__main__":
     attachments_entry = ttk.Entry(window, width=70)
     attachments_entry.grid(row=1, column=1, padx=10, pady=10)
 
-    consolidation_button = ttk.Button(window, text='Procurar...', command=cmd_attachments_folder)
-    consolidation_button.grid(row=1, column=2, padx=10, pady=10)
+    attachments_button = ttk.Button(window, text='Procurar...', command=cmd_attachments_folder)
+    attachments_button.grid(row=1, column=2, padx=10, pady=10)
 
     # Button to start consolidation
     button = tk.Button(window, text="INICIAR CONSOLIDAÇÃO", command=start_consolidation, width=30, height=2)
