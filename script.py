@@ -1,10 +1,6 @@
-#import fitz
 import pymupdf
-
 import os
-import re
 from PyPDF2 import PdfReader, PdfWriter
-from pymupdf.utils import get_textpage_ocr
 
 temp_file = "merged_temp_file.pdf"
 final_new_file = "final_pdf_file.pdf"
