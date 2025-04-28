@@ -53,7 +53,7 @@ def find_attachments_from_marks():
     attachments_folder = attachments_entry.get()
     attachments_files = os.listdir(attachments_folder)
     markigns = get_markings_from_demonstrative()
-    dmarkings = {}
+    dmarkings = {marking: None for marking in markigns}
 
     if len(markigns) == 0:
         add_log("❌ Não foram encontradas marcações no arquivo de demonstrativo!")
@@ -63,7 +63,6 @@ def find_attachments_from_marks():
         for file in attachments_files:
             if marking.lower() in file.lower():
                 dmarkings[marking] = file
-                # add_log(f"✅ Arquivo encontrado: {marking.upper()} - {file.upper()}")
                 break
     return dmarkings
 
@@ -97,26 +96,27 @@ def merge_pdfs(rootPath, demonstrative_file, attachments_files):
 
         # Second, merge each attachment file
         for file in attachments_files:
-            file_path = os.path.join(rootPath, file).replace("\\", "/")
-            reader = PdfReader(file_path)
-            for idx, page in enumerate(reader.pages):
-                if idx == 0:
-                    # Primeira página -> adicionar texto no topo
-                    overlay = set_filename_in_pdf(f"Arquivo: {file}",
-                                                float(page.mediabox.width),
-                                                float(page.mediabox.height))
-                    page.merge_page(overlay)
-                writer.add_page(page)
+            if file:
+                file_path = os.path.join(rootPath, file).replace("\\", "/")
+                reader = PdfReader(file_path)
+                for idx, page in enumerate(reader.pages):
+                    if idx == 0:
+                        # Primeira página -> adicionar texto no topo
+                        overlay = set_filename_in_pdf(f"Arquivo: {file}",
+                                                    float(page.mediabox.width),
+                                                    float(page.mediabox.height))
+                        page.merge_page(overlay)
+                    writer.add_page(page)
 
         output_path = os.path.join(rootPath, merged_temp_file)
+
         with open(output_path, "wb") as f_out:
             writer.write(f_out)
+
         add_log(f"✅ Merge dos anexos efetuado com sucesso!")
-        return True
 
     except Exception as e:
         add_log(f"❌ Erro ao efetuar o merge dos anexos: {e}")
-        return False
 
 # Function to search markings in the first page of merged temp file and create link
 # to the first occurrence in others pages
@@ -137,7 +137,28 @@ def create_pdf_with_links(root_path, merged_temp_file):
             for marking in found_markings:
                 if marking not in destination_links:
                     destination_links[marking] = page_number
+            
 
+            # create links to return top
+            text_back = 'IR PARA O TOPO'
+
+            page_to_link = doc[page_number]
+            point = fitz.Point(page_to_link.rect.width - 100, 10)
+            shape = page_to_link.new_shape()
+            bbox = fitz.Rect(point.x, point.y, point.x + 200, point.y + 30)  # largura e altura do retângulo
+            shape.draw_rect(bbox)
+            shape.finish(fill=(0.9, 0.9, 0.5))  # Cor de fundo amarelado (RGB de 0 a 1)
+
+            # create a Shape to draw on
+
+            shape.insert_text(point, text_back, fontsize=10, color=(1,0,0)) # red
+            shape.commit()
+            area_back = page_to_link.search_for(text_back)
+            page_to_link.insert_link({
+                "from": area_back[0],
+                "kind": fitz.LINK_GOTO,
+                "page": 0
+            })
 
         # Search markings in page 0
         page_0 = doc[0]
@@ -158,8 +179,9 @@ def create_pdf_with_links(root_path, merged_temp_file):
                             "zoom": 0
                         })
 
-        output_despesas_linkado = os.path.join(root_path, final_filename)
+        add_log(f"✅ Links criados no demonstrativo com sucesso!")
         add_log(f"🕒 Salvando o arquivo consolidado!")
+        output_despesas_linkado = os.path.join(root_path, final_filename)
         doc.save(output_despesas_linkado)
         add_log(f"✅ Arquivo {output_despesas_linkado} salvo com sucesso!")
         doc.close()
@@ -194,10 +216,17 @@ def cmd_consolidation_button():
         attachments_folder = attachments_entry.get()
 
         if not demonstrative_file or not attachments_folder:
-            add_log("❌ Arquivo de demonstrativo ou pasta com anexos não encontrado!")
+            add_log(f"❌ Arquivo de demonstrativo ou pasta com anexos não encontrado!")
             return None
 
         dmarkings = find_attachments_from_marks()
+
+        for marking in dmarkings.items():
+            if marking[1]:
+                add_log(f"✅ Arquivo encontrado: {marking[0].upper()} - {marking[1].upper()}")
+            else:
+                add_log(f"❌ Arquivo não encontrado para a marcação: {marking[0].upper()}")
+
         merge_pdfs(attachments_folder, demonstrative_file, dmarkings.values())
         consolidation_button.config(state=tk.NORMAL)
 
