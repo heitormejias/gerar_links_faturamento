@@ -67,9 +67,16 @@ def find_attachments_from_marks():
     return dmarkings
 
 # Function to delete temp file
-def delete_temp_file(merged_pdf_path):
-    if os.path.exists(merged_pdf_path):
-        os.remove(merged_pdf_path)
+def delete_temp_file():
+    add_log("🕒 Removendo arquivo temporário!")
+    try:
+        attachments_folder = attachments_entry.get()
+        file_path = os.path.join(attachments_folder, merged_temp_file).replace("\\", "/")
+        if os.path.exists(file_path):
+            os.remove(file_path)
+    except Exception as e:
+        add_log(f"❌ Error ao remover arquivo temporário: {e}")
+    add_log(f"✅ Arquivo temporário removido com sucesso!")
 
 # Function to create text with the file name in the first page of the merged file
 def set_filename_in_pdf(text, page_width, page_height):
@@ -229,6 +236,9 @@ def cmd_consolidation_button():
         consolidation_button.config(state=tk.NORMAL)
 
         create_pdf_with_links(attachments_folder, merged_temp_file)
+
+        delete_temp_file()
+        add_log(f"✅ Processo finalizado!\n====================================================================================================")
 
     threading.Thread(target=thread).start()
 
