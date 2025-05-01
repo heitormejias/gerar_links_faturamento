@@ -16,7 +16,7 @@ default_bgcolor = "#00BCD4"
 default_font = "Helvetica"
 default_font_size = 11
 merged_temp_file = "MERGED-TEMP-FILE.pdf"
-final_filename = f"DEMONSTRATIVO-DESPESAS-CONSOLIDADDO-{datetime.now().strftime("%d%m%Y")}.pdf"
+final_filename = f"DEMONSTRATIVO-DESPESAS-CONSOLIDADO-{datetime.now().strftime("%d%m%Y")}.pdf"
 
 
 
@@ -141,17 +141,15 @@ def create_pdf_with_links(root_path, merged_temp_file):
 
             # create links to return top
             text_back = 'IR PARA O TOPO'
-
             page_to_link = doc[page_number]
-            point = fitz.Point(page_to_link.rect.width - 100, 10)
+            point = fitz.Point(page_to_link.rect.width - 100, 15)
             shape = page_to_link.new_shape()
-            bbox = fitz.Rect(point.x, point.y, point.x + 200, point.y + 30)  # largura e altura do retângulo
+            bbox = fitz.Rect(point.x - 10, point.y - 15, (point.x - 10) + 100, (point.y - 15) + 20)
             shape.draw_rect(bbox)
-            shape.finish(fill=(0.9, 0.9, 0.5))  # Cor de fundo amarelado (RGB de 0 a 1)
+            shape.finish(fill=(0.86, 0.86, 0.86), color=(0.86, 0.86, 0.86))
 
             # create a Shape to draw on
-
-            shape.insert_text(point, text_back, fontsize=10, color=(1,0,0)) # red
+            shape.insert_text(point, text_back, fontsize=10, color=(0.41, 0.41, 0.41))
             shape.commit()
             area_back = page_to_link.search_for(text_back)
             page_to_link.insert_link({
