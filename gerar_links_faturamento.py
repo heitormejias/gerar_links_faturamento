@@ -1,14 +1,15 @@
+import os
+import re
+import threading
+from datetime import datetime
+from io import BytesIO
+
+import fitz
+from pypdf import PdfReader, PdfWriter
+from reportlab.lib.pagesizes import letter
+from reportlab.pdfgen import canvas
 import tkinter as tk
 from tkinter import ttk, filedialog, scrolledtext
-import threading
-import os
-from pypdf import PdfReader, PdfWriter
-import re
-from reportlab.pdfgen import canvas
-from reportlab.lib.pagesizes import letter
-from io import BytesIO
-from datetime import datetime
-import fitz
 
 
 
@@ -17,7 +18,6 @@ default_font = "Helvetica"
 default_font_size = 11
 merged_temp_file = "MERGED-TEMP-FILE.pdf"
 final_filename = f"DEMONSTRATIVO-DESPESAS-CONSOLIDADO-{datetime.now().strftime("%d%m%Y")}.pdf"
-
 
 
 # Function to add logs in log text area
