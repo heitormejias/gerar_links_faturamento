@@ -2,7 +2,7 @@ import tkinter as tk
 from tkinter import ttk, filedialog, scrolledtext
 import threading
 import os
-from PyPDF2 import PdfReader, PdfWriter
+from pypdf import PdfReader, PdfWriter
 import re
 from reportlab.pdfgen import canvas
 from reportlab.lib.pagesizes import letter
