@@ -1,4 +1,4 @@
-fitz~=0.0.1.dev2
-PyPDF2~=3.0.1
-PyMuPDF~=1.25.5
+fitz==0.0.1.dev2
+pypdf==5.4.0
+reportlab==4.4.0
 pyinstaller~=6.12.0
