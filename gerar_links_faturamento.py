@@ -17,8 +17,6 @@ default_bgcolor = "#00BCD4"
 default_font = "Helvetica"
 default_font_size = 11
 merged_temp_file = "MERGED-TEMP-FILE.pdf"
-final_filename = f"DEMONSTRATIVO-DESPESAS-CONSOLIDADO-{datetime.now().strftime("%d%m%Y")}.pdf"
-
 
 # Function to add logs in log text area
 def add_log(message):
@@ -186,7 +184,7 @@ def create_pdf_with_links(root_path, merged_temp_file):
 
         add_log(f"✅ Links criados no demonstrativo com sucesso!")
         add_log(f"🕒 Salvando o arquivo consolidado!")
-        output_despesas_linkado = os.path.join(root_path, final_filename)
+        output_despesas_linkado = os.path.join(root_path, f"DEMONSTRATIVO-DESPESAS-CONSOLIDADO-{datetime.now().strftime("%d%m%Y")}.pdf")
         doc.save(output_despesas_linkado)
         add_log(f"✅ Arquivo {output_despesas_linkado} salvo com sucesso!")
         doc.close()
