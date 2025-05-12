@@ -45,7 +45,7 @@ def extract_text_from_pdf(file_path):
 def get_markings_from_demonstrative():
     file_path = demonstrative_entry.get()
     text = ' '.join(extract_text_from_pdf(file_path))
-    markings_in_text = find_markings_in_text(text)
+    markings_in_text =  list(set(find_markings_in_text(text)))
     return markings_in_text
 
 # Function to get attachments pdf files from markings
@@ -53,7 +53,7 @@ def find_attachments_from_marks():
     attachments_folder = attachments_entry.get()
     attachments_files = os.listdir(attachments_folder)
     markigns = get_markings_from_demonstrative()
-    dmarkings = {marking: None for marking in markigns}
+    dmarkings = {marking: [] for marking in markigns}
 
     if len(markigns) == 0:
         add_log("❌ Não foram encontradas marcações no arquivo de demonstrativo!")
@@ -62,8 +62,7 @@ def find_attachments_from_marks():
     for marking in markigns:
         for file in attachments_files:
             if marking.lower() in file.lower():
-                dmarkings[marking] = file
-                break
+                dmarkings[marking].append(file)
     return dmarkings
 
 # Function to delete temp file
@@ -102,8 +101,8 @@ def merge_pdfs(rootPath, demonstrative_file, attachments_files):
             writer.add_page(page)
 
         # Second, merge each attachment file
-        for file in attachments_files:
-            if file:
+        for lfiles in attachments_files:
+            for file in lfiles:
                 file_path = os.path.join(rootPath, file).replace("\\", "/")
                 reader = PdfReader(file_path)
                 for idx, page in enumerate(reader.pages):
@@ -227,8 +226,9 @@ def cmd_consolidation_button():
         dmarkings = find_attachments_from_marks()
 
         for marking in dmarkings.items():
-            if marking[1]:
-                add_log(f"✅ Arquivo encontrado: {marking[0].upper()} - {marking[1].upper()}")
+            if len(marking[1]) > 0:
+                for file in marking[1]:
+                    add_log(f"✅ Arquivo encontrado: {marking[0].upper()} - {file.upper()}")
             else:
                 add_log(f"❌ Arquivo não encontrado para a marcação: {marking[0].upper()}")
 
